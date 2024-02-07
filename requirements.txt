@@ -1,0 +1,11 @@
+tensorflow
+tensorflow_datasets
+notebook
+note_seq
+pandas
+numpy
+ipyparams
+torch
+pyfluidsynth
+git+https://github.com/dafg05/hvo_sequence
+git+https://github.com/dafg05/midiUtils
