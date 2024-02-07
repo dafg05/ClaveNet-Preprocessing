@@ -36,8 +36,9 @@ from midiUtils.augExamples import AugExamplesRetriever
 import note_seq
 
 RESOURCES_DIR = 'resources'
-GMD_DATASET_DIR = RESOURCES_DIR + '/gmd_dataset'
-GMD_GROOVE_DIR = GMD_DATASET_DIR + '/groove'
+INFO_CSV = 'info.csv'
+# GMD_DATASET_DIR = RESOURCES_DIR + '/gmd_dataset'
+# GMD_GROOVE_DIR = GMD_DATASET_DIR + '/groove'
 PREPROCESSED_DATASETS_DIR = 'preprocessedDatasets'
 
 # constants for data augmentation
@@ -333,7 +334,7 @@ def preprocess(output_dir, dataAugParams):
         len(list(dataset_test)), 
         len(list(dataset_validation)))
         ) 
-    dataframe = pd.read_csv(f"{GMD_GROOVE_DIR}/info.csv", delimiter = ',')
+    dataframe = pd.read_csv(INFO_CSV, delimiter = ',')
 
     numTransformations = dataAugParams["numTransformations"]
 
