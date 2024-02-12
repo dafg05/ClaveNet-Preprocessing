@@ -419,12 +419,10 @@ def preprocess(output_dir, dataAugParams):
     dataset_list = [dataset_train_processed,
                dataset_test_processed,
                dataset_validation_processed]
-    dataset_list = [dataset_validation_processed]
 
     filename_list = ["GrooveMIDI_processed_train",
                     "GrooveMIDI_processed_test",
                     "GrooveMIDI_processed_validation"]
-    filename_list = ["GrooveMIDI_processed_validation"]
 
     store_dataset_as_pickle(dataset_list, 
                             filename_list,
