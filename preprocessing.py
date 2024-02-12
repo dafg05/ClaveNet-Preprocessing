@@ -1,6 +1,6 @@
 """
 This script is based on the jupyter notebook 'Preprocess_GMD2HVO_Sequence.ipynb'
-Most of the logic is directly copied this notebook.
+Most of the logic is directly copied this notebook, with the exception of the seeded data augmentation logic
 
 Retrieved from https://github.com/behzadhaki/GMD2HVO_PreProcessing
 """
@@ -14,6 +14,7 @@ import tensorflow_datasets as tfds
 import numpy as np
 import pickle
 import pandas as pd
+import shutil
 from shutil import copy2
 import json
 
@@ -29,29 +30,30 @@ from hvo_sequence.drum_mappings import ROLAND_REDUCED_MAPPING
 import mido
 import random
 from midiUtils import dataAug
-from midiUtils.constants import PERC_PARTS
-from midiUtils.augExamples import AugExamplesRetriever
+from midiUtils.augExamples import SeedExamplesRetriever
 
 # Import magenta's note_seq 
 import note_seq
 
 RESOURCES_DIR = 'resources'
-INFO_CSV = 'info.csv'
-# GMD_DATASET_DIR = RESOURCES_DIR + '/gmd_dataset'
-# GMD_GROOVE_DIR = GMD_DATASET_DIR + '/groove'
+INFO_CSV = RESOURCES_DIR + '/info.csv'
 PREPROCESSED_DATASETS_DIR = 'preprocessedDatasets'
 
 # constants for data augmentation
-SEED = 0
-EXAMPLES_DIR = "examples"
+SEED_EXAMPLES_DIR = "seedExamples"
 TMP_DIR = 'tmp'
+TRACK_INDEX = 1
+CHANNEL = 9
+SEED_EXAMPLES_SET = "trialSet"
+SER = SeedExamplesRetriever(f"{SEED_EXAMPLES_DIR}/{SEED_EXAMPLES_SET}")
+
+# tranformation parameters
+RANDOM_SEED = 0
+RNG = np.random.default_rng(seed = RANDOM_SEED)
 NUM_TRANSFORMATIONS = 1
 NUM_REPLACEMENTS = 2
-AER = AugExamplesRetriever(EXAMPLES_DIR)
-STYLE_PARAMS = {
-        "preferredStyle" : "",
-        "outOfStyleProb" : 0.2
-    }
+PREFERRED_STYLE = None
+OUT_OF_STYLE_PROB = 0.2
 
 # testing data aug
 TEST_DATA_AUG = False
@@ -76,11 +78,10 @@ def dict_append(dictionary, key, vals):
 
     return dictionary
 
-def transform_midi(midi_data, trackIndex=1, numReplacements=1):
+def transform_midi(midi_data):
     """
-    TODO: refactor with candidate midi
+    TODO: Add parameters instead of using constants.
     """
-
     original_midi_path = f'{TMP_DIR}/original.mid'
     new_midi_path = f'{TMP_DIR}/transformed.mid'
     debug = False
@@ -89,11 +90,12 @@ def transform_midi(midi_data, trackIndex=1, numReplacements=1):
     # this means that we write the midi_data to file to tmp as usual but we don't overwrite it afterwards
     # this is so that we can inspect the transformation result after the run
     if TEST_DATA_AUG:
-        debug = True
         global evaluation_files_counter
         if random.random() < WRITE_PROB:
+            print(f"Writing midi data to file for evaluation. Iteration {evaluation_files_counter}")
             original_midi_path = f'{TMP_DIR}/test{evaluation_files_counter}.mid'
             new_midi_path = f'{TMP_DIR}/transformed_test{evaluation_files_counter}.mid'
+            debug = True
             evaluation_files_counter += 1
 
     # write the midi_data to a file so that we can build a mido_file out of it.
@@ -102,8 +104,7 @@ def transform_midi(midi_data, trackIndex=1, numReplacements=1):
     mido_file = mido.MidiFile(original_midi_path)
 
     # run random transformation 
-    partsToReplace = random.sample(PERC_PARTS, numReplacements)
-    new_mido_file = dataAug.transformMidiFile(mid=mido_file, trackIndex=trackIndex, partsToReplace=partsToReplace, augExamplesRetriever=AER, styleParams=STYLE_PARAMS, debug=debug)
+    new_mido_file = dataAug.transformMidiFile(mido_file, trackIndex=TRACK_INDEX, numReplacements=NUM_REPLACEMENTS, ser=SER, rng=RNG, preferredStyle=PREFERRED_STYLE, outOfStyleProb=OUT_OF_STYLE_PROB, debug=debug)
 
     # save contents to file, where it will be read back into a midi_data object that we will return
     new_mido_file.save(new_midi_path)
@@ -161,7 +162,7 @@ def convert_groove_midi_dataset(dataset, beat_division_factors=[4], csv_datafram
                     # if we're working with a transformation, update data accordingly
                     is_original = i == 0
                     try:
-                        midi_data = features["midi"].numpy()[0] if is_original else transform_midi(features["midi"].numpy()[0], numReplacements=NUM_REPLACEMENTS)
+                        midi_data = features["midi"].numpy()[0] if is_original else transform_midi(features["midi"].numpy()[0])
                         note_sequence = note_sequence if is_original else note_seq.midi_to_note_sequence(midi_data)
                         # there's a chance that a transformation could result in an empty midi sequence. 
                         # if this is the case, we simply skip the transformation
@@ -263,11 +264,11 @@ def store_dataset_as_pickle(dataset_list,
     if not os.path.exists (path):
         os.makedirs(path)
 
-    json_aug = json.dumps(dataAugParams)
+    # Save the dataAugParams
+    json_aug = json.dumps(dataAugParams, indent = 4)
     with open(f'{path}/dataAugParams.json', 'w') as outfile:
         outfile.write(json_aug)
 
-    # copy2(os.path.join(os.getcwd(), currentNotebook), path) 
     
     for i, dataset in enumerate(dataset_list):
 
@@ -306,12 +307,51 @@ def store_dataset_as_pickle(dataset_list,
             else:
                  raise Warning("Feature is not available: ", feature)
 
+def preprocess_validation_only(output_dir, dataAugParams):
+    """
+    Used for testing purposes. Preprocesses only the validation set.
+    """
+    dataset_validation_unprocessed = tfds.load(
+        name="groove/2bar-midionly",
+        split=tfds.Split.VALIDATION,
+        try_gcs=True)
+    
+    dataset_validation = dataset_validation_unprocessed.batch(1)
+
+    dataframe = pd.read_csv(INFO_CSV, delimiter = ',')
+
+    numTransformations = dataAugParams["numTransformations"]
+
+    dataset_validation_processed = convert_groove_midi_dataset(
+        dataset = dataset_validation, 
+        beat_division_factors=[4], 
+        csv_dataframe_info=dataframe,
+        numTransformations=numTransformations
+        )
+    print("Validation processing done.")
+
+    print(f"Transformation error count: {transformation_error_counter}")
+
+    dataset_validation_processed = sort_dictionary_by_key(dataset_validation_processed, "loop_id")
+    print("Len of dataset_validation_processed: ", len(dataset_validation_processed["loop_id"]))
+
+    dataset_list = [dataset_validation_processed]
+
+    filename_list = ["GrooveMIDI_processed_validation"]
+
+    store_dataset_as_pickle(dataset_list, 
+                            filename_list,
+                            dataAugParams=dataAugParams,
+                            root_dir=output_dir,
+                            append_datetime=True,
+                            features_with_separate_picklefile = ["hvo_sequence", "midi", "note_sequence"]
+                       )
+
 def preprocess(output_dir, dataAugParams):
-    dataset_train_unprocessed, dataset_train_info = tfds.load(
+    dataset_train_unprocessed = tfds.load(
         name="groove/2bar-midionly",
         split=tfds.Split.TRAIN,
-        try_gcs=True,
-        with_info=True)
+        try_gcs=True)
 
     dataset_test_unprocessed = tfds.load(
         name="groove/2bar-midionly",
@@ -323,10 +363,9 @@ def preprocess(output_dir, dataAugParams):
         split=tfds.Split.VALIDATION,
         try_gcs=True)
     
-     # In all three sets, separate entries into individual examples 
+    # In all three sets, separate entries into individual examples 
     dataset_train = dataset_train_unprocessed.batch(1)
     dataset_test  = dataset_test_unprocessed.batch(1)
-    print(f"unprocessed data set len: {len(list(dataset_test))}")
     dataset_validation = dataset_validation_unprocessed.batch(1)
 
     print("\n Number of Examples in Train Set: {}, Test Set: {}, Validation Set: {}".format(
@@ -350,14 +389,14 @@ def preprocess(output_dir, dataAugParams):
         csv_dataframe_info=dataframe,
         numTransformations=numTransformations
     )
-    print("training processing done.")
+    print("Training processing done.")
     # Process Test Set
     dataset_test_processed = convert_groove_midi_dataset(
         dataset = dataset_test, 
         beat_division_factors=[4], 
         csv_dataframe_info=dataframe,
         numTransformations=numTransformations)
-    print("test processing done.")
+    print("Test processing done.")
     # Process Validation Set
     dataset_validation_processed = convert_groove_midi_dataset(
         dataset = dataset_validation, 
@@ -365,25 +404,27 @@ def preprocess(output_dir, dataAugParams):
         csv_dataframe_info=dataframe,
         numTransformations=numTransformations
         )
-    print("validation processing done.")
+    print("Validation processing done.")
 
-    print(f"transformation error count: {transformation_error_counter}")
+    print(f"Transformation error count: {transformation_error_counter}")
 
     # Sort the sets using ids
     dataset_train_processed = sort_dictionary_by_key(dataset_train_processed, "loop_id")
-    print("len of dataset_train_processed: ", len(dataset_train_processed["loop_id"]))
+    print("Len of dataset_train_processed: ", len(dataset_train_processed["loop_id"]))
     dataset_test_processed = sort_dictionary_by_key(dataset_test_processed, "loop_id")
-    print("len of dataset_test_processed: ", len(dataset_test_processed["loop_id"]))
+    print("Len of dataset_test_processed: ", len(dataset_test_processed["loop_id"]))
     dataset_validation_processed = sort_dictionary_by_key(dataset_validation_processed, "loop_id")
-    print("len of dataset_validation_processed: ", len(dataset_validation_processed["loop_id"]))
+    print("Len of dataset_validation_processed: ", len(dataset_validation_processed["loop_id"]))
 
     dataset_list = [dataset_train_processed,
                dataset_test_processed,
                dataset_validation_processed]
+    dataset_list = [dataset_validation_processed]
 
     filename_list = ["GrooveMIDI_processed_train",
                     "GrooveMIDI_processed_test",
                     "GrooveMIDI_processed_validation"]
+    filename_list = ["GrooveMIDI_processed_validation"]
 
     store_dataset_as_pickle(dataset_list, 
                             filename_list,
@@ -394,12 +435,21 @@ def preprocess(output_dir, dataAugParams):
                        )
 
 if __name__ == "__main__":
-    random.seed(SEED)
+    random.seed(RANDOM_SEED)
     dataAugParams = {
-        "seed" : SEED,
+        "seed" : RANDOM_SEED,
+        "seedExamplesSet" : SEED_EXAMPLES_SET,
         "numTransformations" : NUM_TRANSFORMATIONS,
         "numReplacements" : NUM_REPLACEMENTS,
-        "styleParams" : STYLE_PARAMS,
-        "percParts" : PERC_PARTS
+        "preferredStyle" : PREFERRED_STYLE,
+        "outOfStyleProb" : OUT_OF_STYLE_PROB
     }
+
+    # delete the tmp folder if it exists
+    if os.path.exists(TMP_DIR):
+        shutil.rmtree(TMP_DIR)
+    # create a new tmp folder
+    os.makedirs(TMP_DIR)
+
     preprocess(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
+    # preprocess_validation_only(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)

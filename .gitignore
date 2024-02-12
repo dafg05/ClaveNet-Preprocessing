@@ -1,0 +1,9 @@
+venv
+.DS_Store
+
+preprocessedDatasets/*
+resources/gmd_dataset
+seedExamples/*
+audio
+tmp
+out.txt
