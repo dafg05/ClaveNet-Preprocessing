@@ -348,6 +348,11 @@ def preprocess_validation_only(output_dir, dataAugParams):
                        )
 
 def preprocess(output_dir, dataAugParams):
+    """
+    Preprocesses the GMD dataset and stores the training, test, and validation sets as pickles.
+    Only applies data augmentation to the training set.
+    """
+
     dataset_train_unprocessed = tfds.load(
         name="groove/2bar-midionly",
         split=tfds.Split.TRAIN,
@@ -382,7 +387,7 @@ def preprocess(output_dir, dataAugParams):
     # Hence, we need to find the relevant metadata in the info.csv file available groove-v1.0.0-midionly.zip. 
     # To do so, we match the beginning of the id in the chopped segments with the id in info.csv
     
-    # Process Training Set
+    # Process Training Set. Augmentation is applied here
     dataset_train_processed = convert_groove_midi_dataset(
         dataset = dataset_train, 
         beat_division_factors=[4], 
@@ -390,19 +395,19 @@ def preprocess(output_dir, dataAugParams):
         numTransformations=numTransformations
     )
     print("Training processing done.")
-    # Process Test Set
+    # Process Test Set. Skip augmentation here
     dataset_test_processed = convert_groove_midi_dataset(
         dataset = dataset_test, 
         beat_division_factors=[4], 
         csv_dataframe_info=dataframe,
-        numTransformations=numTransformations)
+        numTransformations=0)
     print("Test processing done.")
-    # Process Validation Set
+    # Process Validation Set. Skip augmentation here
     dataset_validation_processed = convert_groove_midi_dataset(
         dataset = dataset_validation, 
         beat_division_factors=[4], 
         csv_dataframe_info=dataframe,
-        numTransformations=numTransformations
+        numTransformations=0
         )
     print("Validation processing done.")
 
