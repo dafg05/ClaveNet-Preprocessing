@@ -40,19 +40,23 @@ INFO_CSV = RESOURCES_DIR + '/info.csv'
 PREPROCESSED_DATASETS_DIR = 'preprocessedDatasets'
 
 # constants for data augmentation
+NO_VALUE_STR = "N/A"
 SEED_EXAMPLES_DIR = "seedExamples"
 TMP_DIR = 'tmp'
 TRACK_INDEX = 1
 CHANNEL = 9
-SEED_EXAMPLES_SET = "trialSet"
-SER = SeedExamplesRetriever(f"{SEED_EXAMPLES_DIR}/{SEED_EXAMPLES_SET}")
+SEED_EXAMPLES_32_SET = "32set"
+SEED_EXAMPLES_23_SET = "23set"
+SER_23 = SeedExamplesRetriever(f"{SEED_EXAMPLES_DIR}/{SEED_EXAMPLES_32_SET}")
+SER_32 = SeedExamplesRetriever(f"{SEED_EXAMPLES_DIR}/{SEED_EXAMPLES_32_SET}")
+
+SERS = [SER_23, SER_32]
 
 # tranformation parameters
 RANDOM_SEED = 0
 RNG = np.random.default_rng(seed = RANDOM_SEED)
 NUM_TRANSFORMATIONS = 1
 NUM_REPLACEMENTS = 2
-PREFERRED_STYLE = None
 OUT_OF_STYLE_PROB = 0.2
 
 # testing data aug
@@ -80,11 +84,15 @@ def dict_append(dictionary, key, vals):
 
 def transform_midi(midi_data):
     """
-    TODO: Add parameters instead of using constants.
+    TODO: Use arguments instead of using constants.
     """
     original_midi_path = f'{TMP_DIR}/original.mid'
     new_midi_path = f'{TMP_DIR}/transformed.mid'
     debug = False
+
+    # choose SERs randomly. Choose a random style from the chosen SER.
+    ser = RNG.choice(SERS)
+    preferredStyle = RNG.choice(ser.styles)
 
     # TESTING DATA AUG LOGIC ONLY: with WRITE_PROB, select the given midi_data for evalutaion.
     # this means that we write the midi_data to file to tmp as usual but we don't overwrite it afterwards
@@ -92,7 +100,7 @@ def transform_midi(midi_data):
     if TEST_DATA_AUG:
         global evaluation_files_counter
         if random.random() < WRITE_PROB:
-            print(f"Writing midi data to file for evaluation. Iteration {evaluation_files_counter}")
+            print(f"Writing midi data to file for evaluation. Iteration {evaluation_files_counter}. PreferredStyle: {preferredStyle}, SER dir: {ser.dir}")
             original_midi_path = f'{TMP_DIR}/test{evaluation_files_counter}.mid'
             new_midi_path = f'{TMP_DIR}/transformed_test{evaluation_files_counter}.mid'
             debug = True
@@ -104,14 +112,14 @@ def transform_midi(midi_data):
     mido_file = mido.MidiFile(original_midi_path)
 
     # run random transformation 
-    new_mido_file = dataAug.transformMidiFile(mido_file, trackIndex=TRACK_INDEX, numReplacements=NUM_REPLACEMENTS, ser=SER, rng=RNG, preferredStyle=PREFERRED_STYLE, outOfStyleProb=OUT_OF_STYLE_PROB, debug=debug)
+    new_mido_file = dataAug.transformMidiFile(mido_file, trackIndex=TRACK_INDEX, numReplacements=NUM_REPLACEMENTS, ser=ser, rng=RNG, preferredStyle=preferredStyle, outOfStyleProb=OUT_OF_STYLE_PROB, debug=debug)
 
     # save contents to file, where it will be read back into a midi_data object that we will return
     new_mido_file.save(new_midi_path)
     with open(new_midi_path, "rb") as binary_file:
         new_midi_data = binary_file.read()
 
-    return new_midi_data
+    return new_midi_data, preferredStyle
 
 def convert_groove_midi_dataset(dataset, beat_division_factors=[4], csv_dataframe_info=None, numTransformations=0):
     """
@@ -131,6 +139,7 @@ def convert_groove_midi_dataset(dataset, beat_division_factors=[4], csv_datafram
         "full_midi_filename":[],
         "full_audio_filename":[],
         "midi":[],
+        "preferredStyle":[], # this is a new key that we add to the dictionary to keep track of the preferred style for the transformation
         "note_sequence":[],
         "hvo_sequence":[],
     })
@@ -162,7 +171,11 @@ def convert_groove_midi_dataset(dataset, beat_division_factors=[4], csv_datafram
                     # if we're working with a transformation, update data accordingly
                     is_original = i == 0
                     try:
-                        midi_data = features["midi"].numpy()[0] if is_original else transform_midi(features["midi"].numpy()[0])
+                        # midi_data = features["midi"].numpy()[0] if is_original else transform_midi(features["midi"].numpy()[0])
+                        if is_original:
+                            midi_data, preferredStyle = features["midi"].numpy()[0], NO_VALUE_STR
+                        else:
+                            midi_data, preferredStyle = transform_midi(features["midi"].numpy()[0])
                         note_sequence = note_sequence if is_original else note_seq.midi_to_note_sequence(midi_data)
                         # there's a chance that a transformation could result in an empty midi sequence. 
                         # if this is the case, we simply skip the transformation
@@ -182,8 +195,8 @@ def convert_groove_midi_dataset(dataset, beat_division_factors=[4], csv_datafram
                             transformation_error_counter += 1
                             continue
                     loop_id = features["id"].numpy()[0].decode("utf-8") if is_original else f"transformed_{i:02d}/{loop_id}"
-                    midi_filename = df["midi_filename"].to_numpy()[0] if is_original else "None"
-                    audio_filename = df["audio_filename"].to_numpy()[0] if is_original else "None"
+                    midi_filename = df["midi_filename"].to_numpy()[0] if is_original else NO_VALUE_STR
+                    audio_filename = df["audio_filename"].to_numpy()[0] if is_original else NO_VALUE_STR
                     
                     # Update the dictionary associated with the metadata
                     dict_append(dataset_dict_processed, "drummer", df["drummer"].to_numpy()[0])
@@ -210,8 +223,8 @@ def convert_groove_midi_dataset(dataset, beat_division_factors=[4], csv_datafram
                         dict_append(dataset_dict_processed, "style_secondary", style_secondary)
                         _hvo_seq.metadata.style_secondary = style_secondary
                     else:
-                        dict_append(dataset_dict_processed, "style_secondary", ["None"])
-                        _hvo_seq.metadata.style_secondary = "None"
+                        dict_append(dataset_dict_processed, "style_secondary", [NO_VALUE_STR])
+                        _hvo_seq.metadata.style_secondary = NO_VALUE_STR
 
                     dict_append(dataset_dict_processed, "bpm", df["bpm"].to_numpy()[0])
                     
@@ -227,6 +240,9 @@ def convert_groove_midi_dataset(dataset, beat_division_factors=[4], csv_datafram
                     _hvo_seq.metadata.full_audio_filename = audio_filename
 
                     dict_append(dataset_dict_processed, "midi", midi_data)
+
+                    dict_append(dataset_dict_processed, "preferredStyle", preferredStyle)
+
                     dict_append(dataset_dict_processed, "note_sequence", [note_sequence])
                             
                     dict_append(dataset_dict_processed, "hvo_sequence", _hvo_seq)
@@ -441,10 +457,9 @@ if __name__ == "__main__":
     random.seed(RANDOM_SEED)
     dataAugParams = {
         "seed" : RANDOM_SEED,
-        "seedExamplesSet" : SEED_EXAMPLES_SET,
+        "seedExamplesSet" : [SEED_EXAMPLES_32_SET, SEED_EXAMPLES_23_SET], # TODO: make this from the SERS constant
         "numTransformations" : NUM_TRANSFORMATIONS,
         "numReplacements" : NUM_REPLACEMENTS,
-        "preferredStyle" : PREFERRED_STYLE,
         "outOfStyleProb" : OUT_OF_STYLE_PROB
     }
 
@@ -454,5 +469,5 @@ if __name__ == "__main__":
     # create a new tmp folder
     os.makedirs(TMP_DIR)
 
-    preprocess(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
-    # preprocess_validation_only(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
+    # preprocess(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
+    preprocess_validation_only(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
