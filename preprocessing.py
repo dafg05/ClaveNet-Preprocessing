@@ -82,6 +82,14 @@ def dict_append(dictionary, key, vals):
 
     return dictionary
 
+def format_tuples(tuples_list):
+    """
+    Convert each tuple in the list to a string where its elements are joined by ':'
+    Then join these strings with ';' to form the final string
+    """
+    formatted_string = ';'.join([":".join(map(str, tup)) for tup in tuples_list])
+    return formatted_string
+
 def transform_midi(midi_data):
     """
     TODO: Use arguments instead of using constants.
@@ -111,15 +119,15 @@ def transform_midi(midi_data):
         binary_file.write(midi_data)
     mido_file = mido.MidiFile(original_midi_path)
 
-    # run random transformation 
-    new_mido_file = dataAug.transformMidiFile(mido_file, trackIndex=TRACK_INDEX, numReplacements=NUM_REPLACEMENTS, ser=ser, rng=RNG, preferredStyle=preferredStyle, outOfStyleProb=OUT_OF_STYLE_PROB, debug=debug)
+    # run random transformation, preserve the replacement tracks information
+    new_mido_file, replacementInfo = dataAug.transformMidiFile(mido_file, trackIndex=TRACK_INDEX, numReplacements=NUM_REPLACEMENTS, ser=ser, rng=RNG, preferredStyle=preferredStyle, outOfStyleProb=OUT_OF_STYLE_PROB, debug=debug)
 
     # save contents to file, where it will be read back into a midi_data object that we will return
     new_mido_file.save(new_midi_path)
     with open(new_midi_path, "rb") as binary_file:
         new_midi_data = binary_file.read()
 
-    return new_midi_data, preferredStyle
+    return new_midi_data, preferredStyle, replacementInfo
 
 def convert_groove_midi_dataset(dataset, beat_division_factors=[4], csv_dataframe_info=None, numTransformations=0):
     """
@@ -140,6 +148,7 @@ def convert_groove_midi_dataset(dataset, beat_division_factors=[4], csv_datafram
         "full_audio_filename":[],
         "midi":[],
         "preferredStyle":[], # this is a new key that we add to the dictionary to keep track of the preferred style for the transformation
+        "replacementTracksInfo":[], # this is a new key that we add to the dictionary to keep track of the replacement tracks for the transformation
         "note_sequence":[],
         "hvo_sequence":[],
     })
@@ -173,9 +182,10 @@ def convert_groove_midi_dataset(dataset, beat_division_factors=[4], csv_datafram
                     try:
                         # midi_data = features["midi"].numpy()[0] if is_original else transform_midi(features["midi"].numpy()[0])
                         if is_original:
-                            midi_data, preferredStyle = features["midi"].numpy()[0], NO_VALUE_STR
+                            midi_data, preferredStyle, replacementInfo = features["midi"].numpy()[0], NO_VALUE_STR, NO_VALUE_STR
                         else:
-                            midi_data, preferredStyle = transform_midi(features["midi"].numpy()[0])
+                            midi_data, preferredStyle, replacementInfo = transform_midi(features["midi"].numpy()[0])
+                            replacementInfo = format_tuples(replacementInfo)
                         note_sequence = note_sequence if is_original else note_seq.midi_to_note_sequence(midi_data)
                         # there's a chance that a transformation could result in an empty midi sequence. 
                         # if this is the case, we simply skip the transformation
@@ -242,6 +252,8 @@ def convert_groove_midi_dataset(dataset, beat_division_factors=[4], csv_datafram
                     dict_append(dataset_dict_processed, "midi", midi_data)
 
                     dict_append(dataset_dict_processed, "preferredStyle", preferredStyle)
+
+                    dict_append(dataset_dict_processed, "replacementTracksInfo", replacementInfo)
 
                     dict_append(dataset_dict_processed, "note_sequence", [note_sequence])
                             
@@ -457,7 +469,7 @@ if __name__ == "__main__":
     random.seed(RANDOM_SEED)
     dataAugParams = {
         "seed" : RANDOM_SEED,
-        "seedExamplesSet" : [SEED_EXAMPLES_32_SET, SEED_EXAMPLES_23_SET], # TODO: make this from the SERS constant
+        "seedExamplesSets" : [SEED_EXAMPLES_32_SET, SEED_EXAMPLES_23_SET], # TODO: make this from the SERS constant
         "numTransformations" : NUM_TRANSFORMATIONS,
         "numReplacements" : NUM_REPLACEMENTS,
         "outOfStyleProb" : OUT_OF_STYLE_PROB
@@ -469,5 +481,5 @@ if __name__ == "__main__":
     # create a new tmp folder
     os.makedirs(TMP_DIR)
 
-    # preprocess(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
-    preprocess_validation_only(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
+    preprocess(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
+    # preprocess_validation_only(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
