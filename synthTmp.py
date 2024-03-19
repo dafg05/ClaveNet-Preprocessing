@@ -13,7 +13,6 @@ def synthTmp():
 
     synth.synthesize_all(TMP_DIR, AUDIO_DIR)
 
-
 if __name__ == '__main__':
     synthTmp()
     print('Done')

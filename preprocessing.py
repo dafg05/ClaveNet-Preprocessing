@@ -17,6 +17,7 @@ import pandas as pd
 import shutil
 from shutil import copy2
 import json
+from pathlib import Path
 
 # Import libraries for creating/naming folders/files
 import os, sys
@@ -47,7 +48,7 @@ TRACK_INDEX = 1
 CHANNEL = 9
 SEED_EXAMPLES_32_SET = "32set"
 SEED_EXAMPLES_23_SET = "23set"
-SER_23 = SeedExamplesRetriever(f"{SEED_EXAMPLES_DIR}/{SEED_EXAMPLES_32_SET}")
+SER_23 = SeedExamplesRetriever(f"{SEED_EXAMPLES_DIR}/{SEED_EXAMPLES_23_SET}")
 SER_32 = SeedExamplesRetriever(f"{SEED_EXAMPLES_DIR}/{SEED_EXAMPLES_32_SET}")
 
 SERS = [SER_23, SER_32]
@@ -90,7 +91,7 @@ def format_tuples(tuples_list):
     formatted_string = ';'.join([":".join(map(str, tup)) for tup in tuples_list])
     return formatted_string
 
-def transform_midi(midi_data):
+def transform_midi(midi_data, dataAugParams):
     """
     TODO: Use arguments instead of using constants.
     """
@@ -119,8 +120,11 @@ def transform_midi(midi_data):
         binary_file.write(midi_data)
     mido_file = mido.MidiFile(original_midi_path)
 
+    numReplacements = dataAugParams["numReplacements"]
+    outOfStyleProb = dataAugParams["outOfStyleProb"]
+
     # run random transformation, preserve the replacement tracks information
-    new_mido_file, replacementInfo = dataAug.transformMidiFile(mido_file, trackIndex=TRACK_INDEX, numReplacements=NUM_REPLACEMENTS, ser=ser, rng=RNG, preferredStyle=preferredStyle, outOfStyleProb=OUT_OF_STYLE_PROB, debug=debug)
+    new_mido_file, replacementInfo = dataAug.transformMidiFile(mido_file, trackIndex=TRACK_INDEX, numReplacements=numReplacements, ser=ser, rng=RNG, preferredStyle=preferredStyle, outOfStyleProb=outOfStyleProb, debug=debug)
 
     # save contents to file, where it will be read back into a midi_data object that we will return
     new_mido_file.save(new_midi_path)
@@ -129,7 +133,7 @@ def transform_midi(midi_data):
 
     return new_midi_data, preferredStyle, replacementInfo
 
-def convert_groove_midi_dataset(dataset, beat_division_factors=[4], csv_dataframe_info=None, numTransformations=0):
+def convert_groove_midi_dataset(dataset, dataAugParams, beat_division_factors=[4], csv_dataframe_info=None, numTransformations=0):
     """
     Converts a tfds dataset into a dictionary containing the processed HVO_Sequence objects and metadata.
     """ 
@@ -184,7 +188,7 @@ def convert_groove_midi_dataset(dataset, beat_division_factors=[4], csv_datafram
                         if is_original:
                             midi_data, preferredStyle, replacementInfo = features["midi"].numpy()[0], NO_VALUE_STR, NO_VALUE_STR
                         else:
-                            midi_data, preferredStyle, replacementInfo = transform_midi(features["midi"].numpy()[0])
+                            midi_data, preferredStyle, replacementInfo = transform_midi(features["midi"].numpy()[0], dataAugParams)
                             replacementInfo = format_tuples(replacementInfo)
                         note_sequence = note_sequence if is_original else note_seq.midi_to_note_sequence(midi_data)
                         # there's a chance that a transformation could result in an empty midi sequence. 
@@ -352,6 +356,7 @@ def preprocess_validation_only(output_dir, dataAugParams):
 
     dataset_validation_processed = convert_groove_midi_dataset(
         dataset = dataset_validation, 
+        dataAugParams=dataAugParams,
         beat_division_factors=[4], 
         csv_dataframe_info=dataframe,
         numTransformations=numTransformations
@@ -418,6 +423,7 @@ def preprocess(output_dir, dataAugParams):
     # Process Training Set. Augmentation is applied here
     dataset_train_processed = convert_groove_midi_dataset(
         dataset = dataset_train, 
+        dataAugParams=dataAugParams,
         beat_division_factors=[4], 
         csv_dataframe_info=dataframe,
         numTransformations=numTransformations
@@ -426,6 +432,7 @@ def preprocess(output_dir, dataAugParams):
     # Process Test Set. Skip augmentation here
     dataset_test_processed = convert_groove_midi_dataset(
         dataset = dataset_test, 
+        dataAugParams=dataAugParams,
         beat_division_factors=[4], 
         csv_dataframe_info=dataframe,
         numTransformations=0)
@@ -433,6 +440,7 @@ def preprocess(output_dir, dataAugParams):
     # Process Validation Set. Skip augmentation here
     dataset_validation_processed = convert_groove_midi_dataset(
         dataset = dataset_validation, 
+        dataAugParams=dataAugParams,
         beat_division_factors=[4], 
         csv_dataframe_info=dataframe,
         numTransformations=0
@@ -467,9 +475,10 @@ def preprocess(output_dir, dataAugParams):
 
 if __name__ == "__main__":
     random.seed(RANDOM_SEED)
+
     dataAugParams = {
         "seed" : RANDOM_SEED,
-        "seedExamplesSets" : [SEED_EXAMPLES_32_SET, SEED_EXAMPLES_23_SET], # TODO: make this from the SERS constant
+        "seedExamplesSets" : [Path(SER_23.dir).name, Path(SER_32.dir).name],
         "numTransformations" : NUM_TRANSFORMATIONS,
         "numReplacements" : NUM_REPLACEMENTS,
         "outOfStyleProb" : OUT_OF_STYLE_PROB

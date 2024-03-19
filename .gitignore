@@ -2,6 +2,7 @@ venv
 .DS_Store
 
 preprocessedDatasets/*
+old_datasets/*
 resources/gmd_dataset
 seedExamples/*
 audio
