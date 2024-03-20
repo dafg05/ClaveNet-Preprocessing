@@ -20,8 +20,10 @@ import json
 from pathlib import Path
 
 # Import libraries for creating/naming folders/files
-import os, sys
+import os
+from pathlib import Path
 from datetime import datetime
+
 
 # Import the HVO_Sequence implementation
 from hvo_sequence.io_helpers import note_sequence_to_hvo_sequence
@@ -36,14 +38,20 @@ from midiUtils.augExamples import SeedExamplesRetriever
 # Import magenta's note_seq 
 import note_seq
 
-RESOURCES_DIR = 'resources'
-INFO_CSV = RESOURCES_DIR + '/info.csv'
-PREPROCESSED_DATASETS_DIR = 'preprocessedDatasets'
+from pathlib import Path
 
-# constants for data augmentation
+# directories
+base_dir = Path(__file__).parent
+
+RESOURCES_DIR = base_dir / 'resources'
+INFO_CSV = RESOURCES_DIR / 'info.csv'
+PREPROCESSED_DATASETS_DIR = base_dir / 'preprocessedDatasets'
+
+SEED_EXAMPLES_DIR = base_dir / "seedExamples"
+TMP_DIR = base_dir / 'tmp'
+
+# data augmentation constants
 NO_VALUE_STR = "N/A"
-SEED_EXAMPLES_DIR = "seedExamples"
-TMP_DIR = 'tmp'
 TRACK_INDEX = 1
 CHANNEL = 9
 SEED_EXAMPLES_32_SET = "32set"
@@ -52,10 +60,11 @@ SER_23 = SeedExamplesRetriever(f"{SEED_EXAMPLES_DIR}/{SEED_EXAMPLES_23_SET}")
 SER_32 = SeedExamplesRetriever(f"{SEED_EXAMPLES_DIR}/{SEED_EXAMPLES_32_SET}")
 
 SERS = [SER_23, SER_32]
+SEED_EXAMPLES_SETS = [Path(SER_23.dir).name, Path(SER_32.dir).name]
 
 # tranformation parameters
-RANDOM_SEED = 0
-RNG = np.random.default_rng(seed = RANDOM_SEED)
+RANDOM_SEED = 42
+RNG = np.random.default_rng(seed=RANDOM_SEED)
 NUM_TRANSFORMATIONS = 1
 NUM_REPLACEMENTS = 2
 OUT_OF_STYLE_PROB = 0.2
@@ -108,7 +117,7 @@ def transform_midi(midi_data, dataAugParams):
     # this is so that we can inspect the transformation result after the run
     if TEST_DATA_AUG:
         global evaluation_files_counter
-        if random.random() < WRITE_PROB:
+        if RNG.random() < WRITE_PROB:
             print(f"Writing midi data to file for evaluation. Iteration {evaluation_files_counter}. PreferredStyle: {preferredStyle}, SER dir: {ser.dir}")
             original_midi_path = f'{TMP_DIR}/test{evaluation_files_counter}.mid'
             new_midi_path = f'{TMP_DIR}/transformed_test{evaluation_files_counter}.mid'
@@ -120,8 +129,8 @@ def transform_midi(midi_data, dataAugParams):
         binary_file.write(midi_data)
     mido_file = mido.MidiFile(original_midi_path)
 
-    numReplacements = dataAugParams["numReplacements"]
-    outOfStyleProb = dataAugParams["outOfStyleProb"]
+    numReplacements = dataAugParams["num_replacements"]
+    outOfStyleProb = dataAugParams["out_of_style_prob"]
 
     # run random transformation, preserve the replacement tracks information
     new_mido_file, replacementInfo = dataAug.transformMidiFile(mido_file, trackIndex=TRACK_INDEX, numReplacements=numReplacements, ser=ser, rng=RNG, preferredStyle=preferredStyle, outOfStyleProb=outOfStyleProb, debug=debug)
@@ -352,7 +361,7 @@ def preprocess_validation_only(output_dir, dataAugParams):
 
     dataframe = pd.read_csv(INFO_CSV, delimiter = ',')
 
-    numTransformations = dataAugParams["numTransformations"]
+    numTransformations = dataAugParams["num_transformations"]
 
     dataset_validation_processed = convert_groove_midi_dataset(
         dataset = dataset_validation, 
@@ -385,7 +394,6 @@ def preprocess(output_dir, dataAugParams):
     Preprocesses the GMD dataset and stores the training, test, and validation sets as pickles.
     Only applies data augmentation to the training set.
     """
-
     dataset_train_unprocessed = tfds.load(
         name="groove/2bar-midionly",
         split=tfds.Split.TRAIN,
@@ -413,7 +421,7 @@ def preprocess(output_dir, dataAugParams):
         ) 
     dataframe = pd.read_csv(INFO_CSV, delimiter = ',')
 
-    numTransformations = dataAugParams["numTransformations"]
+    numTransformations = dataAugParams["num_transformations"]
 
     # In groove-v1.0.0-midionly.zip, we have access to full performances, while using tfds.load(name="groove/2bar-midionly"), we can readily access the performance chopped into 2 bar segments. 
     # However, in the pre-chopped set, the meta data is missing. 
@@ -474,14 +482,12 @@ def preprocess(output_dir, dataAugParams):
                        )
 
 if __name__ == "__main__":
-    random.seed(RANDOM_SEED)
-
     dataAugParams = {
-        "seed" : RANDOM_SEED,
-        "seedExamplesSets" : [Path(SER_23.dir).name, Path(SER_32.dir).name],
-        "numTransformations" : NUM_TRANSFORMATIONS,
-        "numReplacements" : NUM_REPLACEMENTS,
-        "outOfStyleProb" : OUT_OF_STYLE_PROB
+        "random_seed" : RANDOM_SEED,
+        "seed_examples_sets" : SEED_EXAMPLES_SETS,
+        "num_transformations" : NUM_TRANSFORMATIONS,
+        "num_replacements" : NUM_REPLACEMENTS,
+        "out_of_style_prob" : OUT_OF_STYLE_PROB
     }
 
     # delete the tmp folder if it exists
@@ -490,5 +496,5 @@ if __name__ == "__main__":
     # create a new tmp folder
     os.makedirs(TMP_DIR)
 
-    preprocess(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
-    # preprocess_validation_only(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
+    # preprocess(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
+    preprocess_validation_only(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
