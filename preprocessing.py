@@ -437,13 +437,13 @@ def preprocess(output_dir, dataAugParams):
         numTransformations=numTransformations
     )
     print("Training processing done.")
-    # Process Test Set. Skip augmentation here
+    # Process Test Set. Augmentation is applied here
     dataset_test_processed = convert_groove_midi_dataset(
         dataset = dataset_test, 
         dataAugParams=dataAugParams,
         beat_division_factors=[4], 
         csv_dataframe_info=dataframe,
-        numTransformations=0)
+        numTransformations=numTransformations)
     print("Test processing done.")
     # Process Validation Set. Skip augmentation here
     dataset_validation_processed = convert_groove_midi_dataset(
