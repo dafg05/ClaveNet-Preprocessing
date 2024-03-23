@@ -24,6 +24,9 @@ import os
 from pathlib import Path
 from datetime import datetime
 
+# Import tqdm for progress bar
+from tqdm import tqdm
+
 
 # Import the HVO_Sequence implementation
 from hvo_sequence.io_helpers import note_sequence_to_hvo_sequence
@@ -31,7 +34,6 @@ from hvo_sequence.drum_mappings import ROLAND_REDUCED_MAPPING
 
 # Import libraries for data aug
 import mido
-import random
 from midiUtils import dataAug
 from midiUtils.augExamples import SeedExamplesRetriever
 
@@ -165,7 +167,7 @@ def convert_groove_midi_dataset(dataset, dataAugParams, beat_division_factors=[4
         "note_sequence":[],
         "hvo_sequence":[],
     })
-    for features in dataset:
+    for features in tqdm(dataset, desc="Preprocessing dataset"):
         # Features to be extracted from the dataset
         note_sequence = note_seq.midi_to_note_sequence(tfds.as_numpy(features["midi"][0]))
         
