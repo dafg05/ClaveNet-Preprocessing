@@ -14,6 +14,9 @@ base_dir = Path(__file__).parent
 TOONTRACK_DIR = base_dir / 'toontrack_latin_midi'
 PREPROCESSED_DATASETS_DIR = base_dir / 'preprocessedDatasets'
 
+MODIFIED_MAPPING = ROLAND_REDUCED_MAPPING.copy()
+MODIFIED_MAPPING["HH_CLOSED"].append(71) # Looking at the guaguanco midi, there's a palito pattern on note 71. So, adding it to the hi-hat mapping
+
 def store_toontrack_dataset_as_pickle(dataset, 
                             root_dir:Path,
                             append_datetime=True, 
@@ -79,7 +82,7 @@ def create_toontrack_dataset(toontrack_dir):
             midi_data = midi_file.read()
             note_sequence = note_seq.midi_to_note_sequence(midi_data)
             if note_sequence.notes:
-                hvo_sequence = note_sequence_to_hvo_sequence(ns=note_sequence, drum_mapping=ROLAND_REDUCED_MAPPING,beat_division_factors=[4])
+                hvo_sequence = note_sequence_to_hvo_sequence(ns=note_sequence, drum_mapping=MODIFIED_MAPPING,beat_division_factors=[4])
 
                 dict_append(dataset_dict_processed, "drummer", drummer)
                 dict_append(dataset_dict_processed, "session", session)
