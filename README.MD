@@ -1,4 +1,4 @@
-# ClaveNet:Preprocessing
+# ClaveNet-Preprocessing
 
 A repository that mainly houses a preprocessing script based on [this repository](https://github.com/behzadhaki/GMD2HVO_PreProcessing) with support for data augmentation with seedExamples. Also includes misc scripts.
 
