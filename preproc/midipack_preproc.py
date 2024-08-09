@@ -3,21 +3,30 @@ from pathlib import Path
 import pandas as pd
 import pickle
 
-from preprocessing import dict_append, sort_dictionary_by_key
+from preproc.preprocessing import dict_append, sort_dictionary_by_key
 
 import note_seq
 from hvo_sequence.io_helpers import note_sequence_to_hvo_sequence
 from hvo_sequence.drum_mappings import ROLAND_REDUCED_MAPPING
 
-base_dir = Path(__file__).parent
+base_dir = Path(__file__).parent.parent
 
-TOONTRACK_DIR = base_dir / 'toontrack_latin_midi'
+# NOTE: Because of hardcoded paths, this script should only be run from the root directory of the project. It should be modified to do otherwise.
+
+MIDIPACK_DIR = base_dir / 'toontrack_latin_midi'
 PREPROCESSED_DATASETS_DIR = base_dir / 'preprocessedDatasets'
 
 MODIFIED_MAPPING = ROLAND_REDUCED_MAPPING.copy()
-MODIFIED_MAPPING["HH_CLOSED"].append(71) # Looking at the guaguanco midi, there's a palito pattern on note 71. So, adding it to the hi-hat mapping
+MODIFIED_MAPPING["HH_CLOSED"].append(71) # Looking at the guaguanco midi for toontrack midi pack, there's a palito pattern on note 71. So, adding it to the hi-hat mapping
 
-def store_toontrack_dataset_as_pickle(dataset, 
+MIDIPACK_NAME = "Toontrack"
+DRUMMER = "mauricio_herrera"
+SESSION = "toontrack_latin_rhythms_midi"
+STYLE_PRIMARY = "latin"
+TIME_SIGNATURE = "4-4"
+BEAT_TYPE = "beat"
+
+def store_midipack_dataset_as_pickle(dataset, 
                             root_dir:Path,
                             append_datetime=True, 
                             features_with_separate_picklefile = ["hvo_sequence", "midi", "note_sequence"]
@@ -28,7 +37,7 @@ def store_toontrack_dataset_as_pickle(dataset,
     else:
         dt_string =""
         
-    out_dir = Path(root_dir, f"ToonTrackLatin_PreProcessed_On_{dt_string}")
+    out_dir = Path(root_dir, f"{MIDIPACK_NAME}_PreProcessed_On_{dt_string}")
     out_dir.mkdir(parents=True, exist_ok=True)
     
     # Create Metadata File
@@ -55,7 +64,7 @@ def store_toontrack_dataset_as_pickle(dataset,
         else:
             raise Warning("Feature is not available: ", feature)
         
-def create_toontrack_dataset(toontrack_dir):
+def create_midipack_dataset(midipack_dir):
     dataset_dict_processed = dict()
     dataset_dict_processed.update({
         "drummer":[],
@@ -71,13 +80,13 @@ def create_toontrack_dataset(toontrack_dir):
         "hvo_sequence":[],
     })
 
-    drummer = "mauricio_herrera"
-    session = "toontrack_latin_rhythms_midi"
-    style_primary = "latin"
-    time_signature = "4-4"
-    beat_type = "beat"
+    drummer = DRUMMER
+    session = SESSION
+    style_primary = STYLE_PRIMARY
+    time_signature = TIME_SIGNATURE
+    beat_type = BEAT_TYPE
 
-    for midi_path in toontrack_dir.glob("*.mid"):
+    for midi_path in midipack_dir.glob("*.mid"):
         with open(midi_path, "rb") as midi_file:
             midi_data = midi_file.read()
             note_sequence = note_seq.midi_to_note_sequence(midi_data)
@@ -98,15 +107,15 @@ def create_toontrack_dataset(toontrack_dir):
 
     return dataset_dict_processed
 
-def preprocess_toontrack_dataset(toontrack_dir, output_dir):
-    print("Preprocessing Toontrack Dataset")
-    dataset = create_toontrack_dataset(toontrack_dir)
+def preprocess_midipack_dataset(midipack_dir, output_dir):
+    print("Preprocessing Midipack Dataset")
+    dataset = create_midipack_dataset(midipack_dir)
     dataset = sort_dictionary_by_key(dataset, "master_id")
     print("Dataset created!")
     print("-"*100)
     
-    store_toontrack_dataset_as_pickle(dataset, output_dir)
+    store_midipack_dataset_as_pickle(dataset, output_dir)
     print("Dataset stored!")
 
 if __name__ == "__main__":
-    preprocess_toontrack_dataset(TOONTRACK_DIR, PREPROCESSED_DATASETS_DIR)
+    preprocess_midipack_dataset(MIDIPACK_DIR, PREPROCESSED_DATASETS_DIR)

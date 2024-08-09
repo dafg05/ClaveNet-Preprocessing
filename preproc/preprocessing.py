@@ -1,8 +1,6 @@
 """
-This script is based on the jupyter notebook 'Preprocess_GMD2HVO_Sequence.ipynb'
-Most of the logic is directly copied this notebook, with the exception of the seeded data augmentation logic
-
-Retrieved from https://github.com/behzadhaki/GMD2HVO_PreProcessing
+This script is based on the jupyter notebook 'Preprocess_GMD2HVO_Sequence.ipynb' retrieved from https://github.com/behzadhaki/GMD2HVO_PreProcessing
+The original script has been heavily modified to support data augmentation and to be run as a standalone script.
 """
 
 from __future__ import absolute_import, division, print_function, unicode_literals
@@ -43,7 +41,7 @@ import note_seq
 from pathlib import Path
 
 # directories
-base_dir = Path(__file__).parent
+base_dir = Path(__file__).parent.parent
 
 RESOURCES_DIR = base_dir / 'resources'
 INFO_CSV = RESOURCES_DIR / 'info.csv'
@@ -67,17 +65,22 @@ SEED_EXAMPLES_SETS = [Path(SER_23.dir).name, Path(SER_32.dir).name]
 # tranformation parameters
 RANDOM_SEED = 42
 RNG = np.random.default_rng(seed=RANDOM_SEED)
-NUM_TRANSFORMATIONS = 1
-NUM_REPLACEMENTS = 2
+NUM_TRANSFORMATIONS = 0
+NUM_REPLACEMENTS = 1
 OUT_OF_STYLE_PROB = 0.2
 
 # testing data aug
 TEST_DATA_AUG = False
 evaluation_files_counter = 0
 WRITE_PROB = 0.003
-
 # keeping track of transformation errors:
 transformation_error_counter = 0
+
+# making a small dataset for testing
+SINGLE_STYLE = ""
+
+# full dataset or validation only
+VALIDATION_ONLY = False
 
 def dict_append(dictionary, key, vals):
     """
@@ -191,6 +194,10 @@ def convert_groove_midi_dataset(dataset, dataAugParams, beat_division_factors=[4
 
                     # Get the relevant series from the dataframe
                     df = csv_dataframe_info[csv_dataframe_info.id == main_id]
+
+                    # Optionally, filter out styles not equal to SINGLE_STYLE
+                    if SINGLE_STYLE != "" and df["style"].to_numpy()[0].split("/")[0] != SINGLE_STYLE:
+                        continue
                     
                     # if we're working with a transformation, update data accordingly
                     is_original = i == 0
@@ -219,6 +226,7 @@ def convert_groove_midi_dataset(dataset, dataAugParams, beat_division_factors=[4
                             global transformation_error_counter
                             transformation_error_counter += 1
                             continue
+
                     loop_id = features["id"].numpy()[0].decode("utf-8") if is_original else f"transformed_{i:02d}/{loop_id}"
                     midi_filename = df["midi_filename"].to_numpy()[0] if is_original else NO_VALUE_STR
                     audio_filename = df["audio_filename"].to_numpy()[0] if is_original else NO_VALUE_STR
@@ -230,7 +238,6 @@ def convert_groove_midi_dataset(dataset, dataAugParams, beat_division_factors=[4
                     dict_append(dataset_dict_processed, "session", df["session"].to_numpy()[0].split("/")[-1])
                     _hvo_seq.metadata.session = df["session"].to_numpy()[0]
                     
-                    # !! Transformation change!
                     dict_append(dataset_dict_processed, "loop_id", loop_id)
                     _hvo_seq.metadata.loop_id = loop_id
 
@@ -301,8 +308,13 @@ def store_dataset_as_pickle(dataset_list,
         dt_string = now.strftime("%d_%m_%Y_at_%H_%M_hrs")
     else:
         dt_string =""
+
+    if SINGLE_STYLE:
+        style_string = SINGLE_STYLE + "_"
+    else:
+        style_string = ""
         
-    path = os.path.join(path, "PreProcessed_On_"+dt_string)
+    path = os.path.join(path, style_string+"PreProcessed_On_"+dt_string)
     
     if not os.path.exists (path):
         os.makedirs(path)
@@ -484,6 +496,14 @@ def preprocess(output_dir, dataAugParams):
                        )
 
 if __name__ == "__main__":
+    if TEST_DATA_AUG:
+        print("Running in test mode.")
+
+    if SINGLE_STYLE != "":
+        print(f"Processing only style: {SINGLE_STYLE}")
+
+    print(f"Validation only: {VALIDATION_ONLY}")
+
     dataAugParams = {
         "random_seed" : RANDOM_SEED,
         "seed_examples_sets" : SEED_EXAMPLES_SETS,
@@ -498,5 +518,7 @@ if __name__ == "__main__":
     # create a new tmp folder
     os.makedirs(TMP_DIR)
 
-    # preprocess(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
-    preprocess_validation_only(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
+    if VALIDATION_ONLY:
+        preprocess_validation_only(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
+    else:
+        preprocess(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
