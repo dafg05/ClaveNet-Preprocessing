@@ -1,6 +1,6 @@
-# drum-gen preprocessing
+# ClaveNet:Preprocessing
 
-A repository that mainly houses a preprocessing script, largely based on [this repository](https://github.com/behzadhaki/GMD2HVO_PreProcessing) with support for data augmentation with seedExamples.
+A repository that mainly houses a preprocessing script based on [this repository](https://github.com/behzadhaki/GMD2HVO_PreProcessing) with support for data augmentation with seedExamples. Also includes misc scripts.
 
 ## Requirements
 
