@@ -2,12 +2,9 @@ venv
 .DS_Store
 __pycache__
 
-preprocessedDatasets/*
-old_datasets/*
+preprocessedDatasets
 resources/gmd_dataset
-seedExamples/*
-audio
 tmp
-out.txt
 
 toontrack_latin_midi
+seedExamples
