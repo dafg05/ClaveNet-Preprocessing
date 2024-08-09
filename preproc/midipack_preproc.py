@@ -13,6 +13,10 @@ base_dir = Path(__file__).parent.parent
 
 # NOTE: Because of hardcoded paths, this script should only be run from the root directory of the project. It should be modified to do otherwise.
 
+# NOTE: Change this to the path of the midi pack you want to preprocess. The midi pack should consists of a directory of 2-bar midi files. 
+
+# NOTE: Each midi file's name should be in the format: "<style_secondary>_<other_info>.mid". Example: CUBAN-MAMBO_RIM_Variation_01_trim2.mid
+
 MIDIPACK_DIR = base_dir / 'toontrack_latin_midi'
 PREPROCESSED_DATASETS_DIR = base_dir / 'preprocessedDatasets'
 
