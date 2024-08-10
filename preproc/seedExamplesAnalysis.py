@@ -35,25 +35,6 @@ def get_tracks_by_style_and_voice(ser: SeedExamplesRetriever):
 
     return df
 
-# def get_num_tracks_by_style(ser: SeedExamplesRetriever):
-#     num_tracks_by_style = Counter()
-    
-#     for style in ser.styles:
-#         numCandidateTracks = len(ser.getCandidateTracksInfo(style, False, []))
-#         num_tracks_by_style[style] = numCandidateTracks
-
-#     return num_tracks_by_style
-
-# def get_num_tracks_by_voice(ser):
-#     num_tracks_by_voice = Counter()
-#     all_examples = ser.getExamplesByStyle(ser.styles[0]) + ser.getExamplesOutOfStyle(ser.styles[0])
-#     for example in all_examples:
-#         for voice in PERC_VOICES_MAPPING.keys():
-#             if example.hasVoice(voice):
-#                 num_tracks_by_voice[voice] += 1
-    
-#     return num_tracks_by_voice
-
 def get_num_examples(ser):
     all_examples = ser.getExamplesByStyle(ser.styles[0]) + ser.getExamplesOutOfStyle(ser.styles[0])
     return len(all_examples)
