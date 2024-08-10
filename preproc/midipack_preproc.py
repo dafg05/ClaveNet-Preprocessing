@@ -18,7 +18,7 @@ base_dir = Path(__file__).parent.parent
 # NOTE: Each midi file's name should be in the format: "<style_secondary>_<other_info>.mid". Example: CUBAN-MAMBO_RIM_Variation_01_trim2.mid
 
 MIDIPACK_DIR = base_dir / 'toontrack_latin_midi'
-PREPROCESSED_DATASETS_DIR = base_dir / 'preprocessedDatasets'
+OUTPUT_DIR = base_dir / 'batch_runs'
 
 MODIFIED_MAPPING = ROLAND_REDUCED_MAPPING.copy()
 MODIFIED_MAPPING["HH_CLOSED"].append(71) # Looking at the guaguanco midi for toontrack midi pack, there's a palito pattern on note 71. So, adding it to the hi-hat mapping
@@ -122,4 +122,4 @@ def preprocess_midipack_dataset(midipack_dir, output_dir):
     print("Dataset stored!")
 
 if __name__ == "__main__":
-    preprocess_midipack_dataset(MIDIPACK_DIR, PREPROCESSED_DATASETS_DIR)
+    preprocess_midipack_dataset(MIDIPACK_DIR, OUTPUT_DIR)

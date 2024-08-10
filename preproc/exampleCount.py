@@ -10,13 +10,10 @@ VALIDATION_SUFFIX = 'validation'
 PARTITION_PREFIX = 'GrooveMIDI_processed_'
 METADATA_FILE = 'metadata.csv'
 
-# NOTE: Because of hardcoded paths, this script should only be run from the root directory of the project. It should be modified to do otherwise.
-# paths
 base_dir = Path(__file__).parent.parent
-PREPROCESSED_DATASETS = base_dir / 'preprocessedDatasets'
 
 # NOTE: Change this to the path of the dataset you want to analyze. The non_transformed_dataset should be the output of the preprocessing script.
-NON_TRANSFORMED_DATASET_ROOT = PREPROCESSED_DATASETS / 'non_transformed_dataset'
+NON_TRANSFORMED_DATASET_ROOT = base_dir / 'non_transformed_dataset'
 
 TRAIN_PARTITION = NON_TRANSFORMED_DATASET_ROOT / f'{PARTITION_PREFIX}{TRAIN_SUFFIX}'
 TEST_PARTITION = NON_TRANSFORMED_DATASET_ROOT / f'{PARTITION_PREFIX}{TEST_SUFFIX}'
