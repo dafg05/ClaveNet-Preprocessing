@@ -65,5 +65,5 @@ if __name__ == "__main__":
     track_df_23 = get_tracks_by_style_and_voice(SER_23)
     track_df_32 = get_tracks_by_style_and_voice(SER_32)
 
-    track_df_23.to_csv(SEED_EXAMPLES_DIR / f"{SEED_EXAMPLES_23_SET}_tracks_example_count_{num_examples_23}_test.csv")
-    track_df_32.to_csv(SEED_EXAMPLES_DIR / f"{SEED_EXAMPLES_32_SET}_tracks_example_count_{num_examples_32}_test.csv")
+    track_df_23.to_csv(SEED_EXAMPLES_DIR / f"{SEED_EXAMPLES_23_SET}_tracks_example_count_{num_examples_23}.csv")
+    track_df_32.to_csv(SEED_EXAMPLES_DIR / f"{SEED_EXAMPLES_32_SET}_tracks_example_count_{num_examples_32}.csv")
