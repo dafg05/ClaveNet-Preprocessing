@@ -1,6 +1,6 @@
 # ClaveNet-Preprocessing
 
-This repository mainly houses a preprocessing module (`preprocessing.py`) for the Groove MIDI Dataset (based on [this repository](https://github.com/behzadhaki/GMD2HVO_PreProcessing)) with support for Drum Data Augmentation with Seed Patterns. Additionally, there are scripts for 1. preprocessing the ToonTrack Latin MIDI pack (`midipack_preproc.py`), 2. counting the number of examples per style in the GMD (`exampleCount`), 3. counting the number of seed patterns per style and drum voice in the set of seed examples (`seedExamplesAnalysis.py`).
+This repository mainly houses a preprocessing module (`preprocessing.py`) for the [Groove MIDI Dataset](https://magenta.tensorflow.org/datasets/groove) (based on [this repository](https://github.com/behzadhaki/GMD2HVO_PreProcessing)) with support for Drum Data Augmentation with Seed Patterns. Additionally, there are scripts for 1. preprocessing the ToonTrack Latin MIDI pack (`midipack_preproc.py`), 2. counting the number of examples per style in the GMD (`exampleCount`), 3. counting the number of seed patterns per style and drum voice in the set of seed examples (`seedExamplesAnalysis.py`).
 
 ## Requirements
 
@@ -18,7 +18,7 @@ The file `preprocessing.py` can be ran on its own, or as part of a batch preproc
 
 ### Output
 
-The preprocessed dataset is a directory structured as follows:
+The preprocessed dataset is a directory written to `out/` structured as follows:
 
 ```
 PreProcessed_On_DD_MM_YYYY_at_HH_MM_hrs/
@@ -35,6 +35,12 @@ PreProcessed_On_DD_MM_YYYY_at_HH_MM_hrs/
 ```
 
 The file `dataAugParams.json` details the data augmentation parameter configuration used to generate the preprocessed dataset. The pickled `.obj` files contain different symbolic representations for the GMD's drum recordings. They share indices; e.g. the 50th HVO Sequence in `hvo_seq.obj` represents the same drum recording as the 50th MIDI file in `midi_data.obj`.
+
+### Data augmentation parameters
+
+To customize data augmentation parameters, change the values of the constants `NUM_TRANSFORMATIONS`, `NUM_REPLACEMENTS`, `OUT_OF_STYLE_PROB`.
+
+To preprocess the vanilla GMD, simply set `NUM_TRANSFORMATIONS = 0`.
 
 ### Preprocessing a single-style dataset
 

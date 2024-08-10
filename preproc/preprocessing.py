@@ -45,7 +45,7 @@ base_dir = Path(__file__).parent.parent
 
 RESOURCES_DIR = base_dir / 'resources'
 INFO_CSV = RESOURCES_DIR / 'info.csv'
-PREPROCESSED_DATASETS_DIR = base_dir / 'preprocessedDatasets'
+OUTPUT_DIR = base_dir / 'out'
 
 SEED_EXAMPLES_DIR = base_dir / "seedExamples"
 TMP_DIR = base_dir / 'tmp'
@@ -62,12 +62,14 @@ SER_32 = SeedExamplesRetriever(f"{SEED_EXAMPLES_DIR}/{SEED_EXAMPLES_32_SET}")
 SERS = [SER_23, SER_32]
 SEED_EXAMPLES_SETS = [Path(SER_23.dir).name, Path(SER_32.dir).name]
 
-# tranformation parameters
+# random seed
 RANDOM_SEED = 42
 RNG = np.random.default_rng(seed=RANDOM_SEED)
+
+# data augmentation parameters
 NUM_TRANSFORMATIONS = 0
-NUM_REPLACEMENTS = 1
-OUT_OF_STYLE_PROB = 0.2
+NUM_REPLACEMENTS = 2
+OUT_OF_STYLE_PROB = 0.5
 
 # testing data aug
 TEST_DATA_AUG = False
@@ -519,6 +521,6 @@ if __name__ == "__main__":
     os.makedirs(TMP_DIR)
 
     if VALIDATION_ONLY:
-        preprocess_validation_only(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
+        preprocess_validation_only(OUTPUT_DIR, dataAugParams=dataAugParams)
     else:
-        preprocess(PREPROCESSED_DATASETS_DIR, dataAugParams=dataAugParams)
+        preprocess(OUTPUT_DIR, dataAugParams=dataAugParams)
