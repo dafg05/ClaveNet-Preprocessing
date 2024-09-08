@@ -1,6 +1,8 @@
 # ClaveNet-Preprocessing
 
-This repository mainly houses a preprocessing module (`preprocessing.py`) for the [Groove MIDI Dataset](https://magenta.tensorflow.org/datasets/groove) (based on [this repository](https://github.com/behzadhaki/GMD2HVO_PreProcessing)) with support for Drum Data Augmentation with Seed Patterns. Additionally, there are scripts for 1. preprocessing the ToonTrack Latin MIDI pack (`midipack_preproc.py`), 2. counting the number of examples per style in the GMD (`exampleCount`), 3. counting the number of seed patterns per style and drum voice in the set of seed examples (`seedExamplesAnalysis.py`).
+This repository mainly houses a preprocessing module (`preprocessing.py`) for the [Groove MIDI Dataset](https://magenta.tensorflow.org/datasets/groove) (based on [this repository](https://github.com/behzadhaki/GMD2HVO_PreProcessing)) with support for Drum Data Augmentation with Seed Patterns. There are scripts for 1. counting the number of examples per style in the GMD (`exampleCount`), and 2. counting the number of seed patterns per style and drum voice in the set of seed examples (`seedExamplesAnalysis.py`).
+
+Additionally, this repository houses a script (`midipack_preproc.py`) for preprocessing the Evaluation Set that we will use to calculate the Cumulative Distance of a ClaveNet model. In our case, the evaluation set will be a version of the ToonTrack Latin MIDI pack.
 
 ## Requirements
 
@@ -55,10 +57,6 @@ The script `preproc_batch.py` can be ran to preprocess multiple configurations o
 
 The output preprocessed datasets will be written to the `batch_runs` directory.
 
-## Latin Midi Pack Preprocessing
-
-**TODO**
-
 ## Counting number of examples per style in the GMD
 
 ### Usage
@@ -74,3 +72,18 @@ The per-style count will be printed to the console.
 2. ```$ python -m preproc.seedExamplesAnalysis ```
 
 Two `.csv` files --one for the 23 set and the other for the 32 set-- will be written to the `seedExamples` dir.
+
+## Evaluation Set (Latin MIDI Pack) Preprocessing
+
+Note that the Latin MIDI Pack is used for evaluating a trained ClaveNet model, not for the training itself. The `midipack_prerpoc` script takes in a folder containing a collection of midi files in 4/4 of 2 bars each. To format the Latin MIDI Pack in this way, here is what we did:
+
+1. Purchase the [ToonTrack Latin Midi Pack](https://www.toontrack.com/product/latin-rhythms-midi/).
+2. Download the MIDI pack and move all of its midi contents, which should be 4-bar midi files, to a single directory (e.g. `toontrack_latin_midi/`). How to do this might differ depending on your operating system:
+    * For macOS, once you download the midi pack in `.dmg` format, you should be able to open the `.dmg` and find a `Contents` folder within it. Within this folder, the midi files will be scattered among different sub folders.
+    * Otherwise, you might have to do some digging in your OS's filesystem to find the midi files.
+3. Keep only the MIDI files representing Afro-Cuban drum beats in your `toontrack_latin_midi` directory.
+    * We kept only files of the following styles: CHA-CHA-CHA, CUBAN-MAMBO, GUAGUANCO, MERENGUE, MOZAMBIQUE, SALSA, SONGO.
+4. Split all your Afro-Cuban drums MIDI files into two separate 2-bar midi files. This step should double the number of files in your `toontrack_latin_midi/` directory.
+    * To do this, you might find a combination of the python [mido library](https://mido.readthedocs.io/en/stable/) and the [trimMidiTrack](https://github.com/dafg05/ClaveNet-MidiUtils/blob/main/midiUtils/tools.py) function from the MidiUtils module helpful.
+5. Set the `MIDIPACK_DIR` constant in the `midipack_preproc.py` file to your `toontrack_latin_midi/` path.
+6. Run `$ python midipack_preproc.py`.
